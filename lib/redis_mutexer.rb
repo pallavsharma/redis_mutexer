@@ -1,9 +1,7 @@
 require "redis_mutexer/version"
 require "redis"
-require 'active_support/concern'
 
 module RedisMutexer
-  extend ActiveSupport::Concern
 
   class Configuration
     attr_accessor :redis, :host, :port, :db, :time, :logger
