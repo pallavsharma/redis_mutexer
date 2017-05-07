@@ -3,48 +3,31 @@ require "redis"
 
 module RedisMutexer
 
-  class Configuration
-    attr_accessor :redis, :host, :port, :db, :time, :logger
-
-    def initialize
-      @host = 'localhost'    #host
-      @port = 6379           #port
-      @db = '1'  #database namespace
-      @time = 60             #seconds
-    end
+  def redis
+    redis ||= Redis.new(host: 'localhost',
+                        port: '6379',
+                        db:   'redis_mutexer'
+                       )
   end
 
-  class << self
-    attr_accessor :config
+  # lockable locks the obj with user
+  def lockable(obj, time)
+    redis.setex("#{obj.class.name + ":" + obj.id.to_s}", time, self.id)
   end
 
-  def configure
-    @config ||= Configuration.new
-    yield(config) if block_given? 
-
-    # Create a redis connection if not provided with
-    @config.redis ||=
-      Redis.new(host: config.host,
-                port: config.port,
-                db:   config.db,
-                time: config.time
-               )
-    @config.logger = config.logger
-    @config.logger.debug "Config called"
-
-    @config.logger ||= Logger.new(STDOUT)
-  end
-
-  def lock(obj, time)
-    Logger.new(STDOUT)
-    RedisMutexer.config.redis.setex("#{obj.class.name + ":" + obj.id.to_s}", time, self.id)
-  end
+  # check if the obj is locked with other user
   def locked?(obj)
-    (RedisMutexer.config.redis.get("#{obj.class.name + ":" + obj.id.to_s}").to_i == self.id) ? true : false
-  end
-  def unlock(obj)
-    RedisMutexer.config.redis.del("#{obj.class.name + ":" + obj.id.to_s}")
+    (redis.get("#{obj.class.name + ":" + obj.id.to_s}").to_i == self.id) ? true : false
   end
 
-  module_function :configure
+  # unlock obj if required
+  def unlock(obj)
+    redis.del("#{obj.class.name + ":" + obj.id.to_s}")
+  end
+
+  # check and lock obj with user
+  def lock(obj, time)
+    return if locked?(obj)
+    lockable(obj, time)
+  end
 end
