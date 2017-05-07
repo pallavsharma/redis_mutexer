@@ -12,12 +12,11 @@ PROJECT_ROOT = File.expand_path(File.join(File.dirname(__FILE__), '..')).freeze
 $LOAD_PATH << File.join(PROJECT_ROOT, 'lib')
 Dir[File.join(PROJECT_ROOT, 'spec/support/**/*.rb')].each { |file| require(file) }
 
-RSpec.configure do |config|
-  # Enable flags like --only-failures and --next-failure
-  config.example_status_persistence_file_path = ".rspec_status"
-
-  config.expect_with :rspec do |c|
-    c.syntax = :expect
+RSpec.configure do |c|
+  c.before(:all) { setup_db }
+  c.after(:all)  { teardown_db }
+  c.before(:suite) do
+    Time.zone = 'Pacific Time (US & Canada)'
   end
 end
 
@@ -26,13 +25,10 @@ ActiveRecord::Base.establish_connection(:adapter => "sqlite3", :database => ":me
 def setup_db
   ActiveRecord::Schema.define(:version => 1) do
     create_table :users do |t|
-      t.integer  :id
       t.string   :name
       t.timestamps
     end
-
-    create_table :topic do |t|
-      t.integer  :id
+    create_table :topics do |t|
       t.string   :title
       t.timestamps
     end
@@ -47,4 +43,7 @@ end
 
 class User < ActiveRecord::Base
   include RedisMutexer
+end
+
+class Topic < ActiveRecord::Base
 end
