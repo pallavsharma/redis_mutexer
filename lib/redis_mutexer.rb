@@ -50,7 +50,11 @@ module RedisMutexer
   def owner?(obj)
     (RedisMutexer.config.redis.get("#{obj.class.name + ":" + obj.id.to_s}").to_i == self.id) ? true : false
   end
-  
+
+  # find time remaining to expire a lock in seconds.
+  def unlocking_in(obj)
+    RedisMutexer.config.redis.ttl("#{obj.class.name + ":" + obj.id.to_s}")
+  end
   # unlock obj if required
   def unlock(obj)
     Logger.new(STDOUT)
