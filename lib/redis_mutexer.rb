@@ -26,8 +26,7 @@ module RedisMutexer
     @config.redis ||=
       Redis.new(host: config.host,
                 port: config.port,
-                db:   config.db,
-                time: config.time
+                db:   config.db
                )
     @config.logger = config.logger
     @config.logger.debug "Config called"
@@ -55,7 +54,7 @@ module RedisMutexer
 
   # check and lock obj with user
   # using redis multi
-  def lock(obj, time)
+  def lock(obj, time = RedisMutexer.config.time)
     unless locked?(obj)
       RedisMutexer.config.redis.multi do
         lockable(obj, time)
