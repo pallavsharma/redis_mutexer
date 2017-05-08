@@ -56,10 +56,12 @@ module RedisMutexer
   # check and lock obj with user
   # using redis multi
   def lock(obj, time)
-    redis.multi do
-      lockable(obj, time) unless locked?(obj)
+    unless locked?(obj)
+      RedisMutexer.config.redis.multi do
+        lockable(obj, time)
+      end
     end
   end
-
+  
   module_function :configure
 end
