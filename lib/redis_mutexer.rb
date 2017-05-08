@@ -35,15 +35,30 @@ module RedisMutexer
     @config.logger ||= Logger.new(STDOUT)
   end
 
-  def lock(obj, time)
+  # lockable locks the obj with user
+  def lockable(obj, time)
     Logger.new(STDOUT)
     RedisMutexer.config.redis.setex("#{obj.class.name + ":" + obj.id.to_s}", time, self.id)
   end
+
+  # check if the obj is locked with other user
   def locked?(obj)
+    Logger.new(STDOUT)
     (RedisMutexer.config.redis.get("#{obj.class.name + ":" + obj.id.to_s}").to_i == self.id) ? true : false
   end
+  
+  # unlock obj if required
   def unlock(obj)
+    Logger.new(STDOUT)
     RedisMutexer.config.redis.del("#{obj.class.name + ":" + obj.id.to_s}")
+  end
+
+  # check and lock obj with user
+  # using redis multi
+  def lock(obj, time)
+    redis.multi do
+      lockable(obj, time) unless locked?(obj)
+    end
   end
 
   module_function :configure
