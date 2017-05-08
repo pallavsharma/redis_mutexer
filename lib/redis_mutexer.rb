@@ -40,12 +40,17 @@ module RedisMutexer
     RedisMutexer.config.redis.setex("#{obj.class.name + ":" + obj.id.to_s}", time, self.id)
   end
 
-  # check if the obj is locked with other user
+  # this will check if the obj is locked with any user.
   def locked?(obj)
     Logger.new(STDOUT)
-    (RedisMutexer.config.redis.get("#{obj.class.name + ":" + obj.id.to_s}").to_i == self.id) ? true : false
+    (RedisMutexer.config.redis.get("#{obj.class.name + ":" + obj.id.to_s}") ? true : false)
   end
 
+  # to check if the user is the owner of the lock.
+  def owner?(obj)
+    (RedisMutexer.config.redis.get("#{obj.class.name + ":" + obj.id.to_s}").to_i == self.id) ? true : false
+  end
+  
   # unlock obj if required
   def unlock(obj)
     Logger.new(STDOUT)
@@ -57,7 +62,7 @@ module RedisMutexer
   # check and lock obj with user
   # using redis multi
   def lock(obj, time = RedisMutexer.config.time)
-    unless self.locked?(obj)
+    unless locked?(obj)
       RedisMutexer.config.redis.multi do
         self.lockable(obj, time)
       end
