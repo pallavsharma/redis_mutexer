@@ -76,7 +76,7 @@ module RedisMutexer
   # unlock obj if required
   def unlock(obj)
     logger
-    if self.locked?(obj)
+    if locked?(obj)
       RedisMutexer.config.redis.del(key(obj))
     end
   end
