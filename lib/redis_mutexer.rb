@@ -9,7 +9,7 @@ module RedisMutexer
     def initialize
       @host = 'localhost'    #host
       @port = 6379           #port
-      @db = '1'  #database namespace
+      @db = 'redis_mutexer'  #database namespace
       @time = 60             #seconds
     end
   end
@@ -30,44 +30,55 @@ module RedisMutexer
                )
     @config.logger = config.logger
     @config.logger.debug "Config called"
-
     @config.logger ||= Logger.new(STDOUT)
   end
 
+  # alias redis
+  def redis
+    RedisMutexer.config.redis
+  end
+
+  # alias logger
+  def logger
+    RedisMutexer.config.logger
+  end
+
+  # set redis key
+  def key(obj)
+    "#{self.class.name}:#{obj.class.name}:#{obj.id}"
+  end
+
   # lockable locks the obj with user
-  def lockable(obj, time)
-    Logger.new(STDOUT)
-    key = "#{obj.class.name + ":" + obj.id.to_s}"
-    RedisMutexer.config.redis.expire(key, time) if RedisMutexer.config.redis.setnx(key, self.id)
+  def lock(obj, time = RedisMutexer.config.time)
+    logger
+    locked = RedisMutexer.config.redis.setnx(key(obj), self.id)
+    if locked
+      return RedisMutexer.config.redis.expire(key(obj), time)
+    end
+    locked
   end
 
   # this will check if the obj is locked with any user.
   def locked?(obj)
-    Logger.new(STDOUT)
-    (RedisMutexer.config.redis.get("#{obj.class.name + ":" + obj.id.to_s}") ? true : false)
+    RedisMutexer.config.redis.exists(key(obj))
   end
 
   # to check if the user is the owner of the lock.
   def owner?(obj)
-    (RedisMutexer.config.redis.get("#{obj.class.name + ":" + obj.id.to_s}").to_i == self.id) ? true : false
+    (self.id == RedisMutexer.config.redis.get(key(obj)).to_i)
   end
 
   # find time remaining to expire a lock in seconds.
   def unlocking_in(obj)
-    RedisMutexer.config.redis.ttl("#{obj.class.name + ":" + obj.id.to_s}")
-  end
-  # unlock obj if required
-  def unlock(obj)
-    Logger.new(STDOUT)
-    if self.locked?(obj)
-      RedisMutexer.config.redis.del("#{obj.class.name + ":" + obj.id.to_s}")
-    end
+    RedisMutexer.config.redis.ttl(key(obj))
   end
 
-  # check and lock obj with user
-  # using redis multi
-  def lock(obj, time = RedisMutexer.config.time)
-    self.lockable(obj, time)
+  # unlock obj if required
+  def unlock(obj)
+    logger
+    if self.locked?(obj)
+      RedisMutexer.config.redis.del(key(obj))
+    end
   end
 
   module_function :configure
