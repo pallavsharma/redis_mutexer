@@ -1,6 +1,6 @@
 require "redis_mutexer/version"
 require "redis"
-require "pry"
+#require "pry"
 
 module RedisMutexer
   class Configuration
